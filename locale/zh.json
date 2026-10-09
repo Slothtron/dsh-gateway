@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "IM 网关桥（octop-gateway）",
+    "description": "把 octop-gateway 的 IM 通道桥接为 DSH 会话：Python sidecar、设置页通道管理、按主题路由与上下文水位会话轮换。"
+  }
+}

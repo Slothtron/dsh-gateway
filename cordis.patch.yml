@@ -1,0 +1,17 @@
+# dsh-gateway: registers the Host plugin row with its default config.
+# Users override any of these fields in their own profile patch layer.
+- insert:
+    - id: dsh-gateway
+      name: '@slothtron/dsh-gateway'
+      config:
+        # Python interpreter that has octop-gateway installed. Empty = auto:
+        # <packageDir>/.venv/bin/python when present, else "python3".
+        pythonBin: ''
+        # Data dir for the sidecar (media backend storage, scratch). Empty =
+        # ~/.dsh/dsh-gateway.
+        dataDir: ''
+        # Workspace directory for channels in "default" workspace mode. Empty =
+        # the Harness default workspace (falls back to an ungrouped session).
+        defaultWorkspacePath: ''
+        # Seconds to wait for an agent turn to settle before replying an error.
+        replyTimeoutSec: 240
