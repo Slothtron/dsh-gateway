@@ -486,9 +486,28 @@ window.__ModuleLoader__.load({
         }
       })
 
+      const onBootstrapRuntime = () => runBusy('runtime', async () => {
+        try {
+          await api('/runtime/bootstrap', { method: 'POST' })
+          showFlash('ok', '已开始初始化 Python 运行时（首次安装可能需要一两分钟）')
+        } catch (error) {
+          showFlash('err', `初始化失败：${error?.message ?? error}`)
+        }
+      })
+
       const sidecar = snapshot?.sidecar
+      const runtime = snapshot?.runtime
       const channels = snapshot?.channels ?? []
       const kindsReady = Boolean((snapshot?.kinds ?? []).length)
+      const runtimeLabel = (() => {
+        if (!runtime) return null
+        const kindText = { explicit: '指定解释器', 'package-venv': '包内 .venv', system: '系统解释器', managed: '托管 venv' }[runtime.kind]
+          ?? (runtime.phase === 'idle' || runtime.phase === 'probing' ? '探测中' : '未就绪')
+        const versions = [runtime.python ? `Python ${runtime.python}` : null, runtime.sdk ? `octop-gateway ${runtime.sdk}` : null]
+          .filter(Boolean).join(' · ')
+        const head = `运行时：${kindText}${versions ? ` · ${versions}` : ''}`
+        return runtime.lastError ? `${head} — ${String(runtime.lastError).split('\n')[0]}` : head
+      })()
 
       return h('div', { style: S.page },
         h('div', { style: S.statusRow },
@@ -500,12 +519,19 @@ window.__ModuleLoader__.load({
           ),
           h('span', { style: { flex: 1 } }),
           h('button', {
+            style: { ...S.btn, ...(busy === 'runtime' ? S.btnDisabled : {}) },
+            disabled: busy === 'runtime', onClick: onBootstrapRuntime,
+          }, '初始化运行时'),
+          h('button', {
             style: { ...S.btn, ...(busy === 'restart' ? S.btnDisabled : {}) },
             disabled: busy === 'restart', onClick: onRestart,
           }, '重启 sidecar'),
         ),
+        runtimeLabel
+          ? h('div', { style: { fontSize: 12, color: runtime.lastError ? T.error : T.text3, margin: '4px 0 0' } }, runtimeLabel)
+          : null,
         loadError ? h('div', { style: S.flash('err') }, `状态获取失败：${loadError}`) : null,
-        !kindsReady && snapshot ? h('div', { style: S.flash('err') }, '通道类型清单为空：sidecar 未就绪或未安装 octop-gateway') : null,
+        !kindsReady && snapshot ? h('div', { style: S.flash('err') }, '通道类型清单为空：sidecar 未就绪或未安装 octop-gateway——可点「初始化运行时」自动安装') : null,
 
         h('div', { style: S.columns },
           h('div', { style: S.list },

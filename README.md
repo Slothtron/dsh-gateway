@@ -43,15 +43,32 @@ IM 里直接发（由插件应答，不消耗 agent turn）：
 ## 安装与配置
 
 ```bash
-# 1. Python 环境：sidecar 需要已安装 octop-gateway 的解释器
-cd <package>
-uv venv .venv && uv pip install -e /path/to/octop-gateway   # 或 pip install octop-gateway
-
-# 2. 安装到某个 profile
 dsh plugin --profile <name> add /path/to/dsh-gateway
 ```
 
-配置项（profile patch 覆盖，见 `cordis.patch.yml`）：`pythonBin`（空 = 包内 `.venv/bin/python`，再退 `python3`）、`dataDir`、`defaultWorkspacePath`、`replyTimeoutSec`。
+装完即用：插件的 Python 运行时自己解决，不需要你先准备虚拟环境。
+
+### Python 运行时怎么来的
+
+sidecar 是 Python 程序，npm 只能把脚本装到位；解释器和 `octop-gateway` 依赖在 Python 自己的生态里，插件把这步自动化了：
+
+1. **按顺序探测**：`config.pythonBin`（显式）→ 包内 `.venv/bin/python`（开发检出场景）→ PATH 上的 `python3` / `python` → 托管 venv。谁先能 `import octop_gateway` 就用谁，尊重你已有的环境。
+2. **都没有就自举**：在 `<dataDir>/runtime/venv` 建托管 venv 并装上 `octop-gateway`（PATH 上有 `uv` 就用 uv，否则 `python3 -m venv` + pip；跨进程用锁避免两个 profile 同时装）。
+3. **不阻塞宿主启动**：解析/安装跑在 sidecar 启动路径上，宿主启动不被拖慢；首次安装可能花一两分钟，设置页会显示进度阶段，失败则显示原因并退避重试。
+
+设置页「IM 网关」顶部会显示当前运行时（来源 · Python 版本 · octop-gateway 版本），并有「初始化运行时」按钮（重新探测 + 重建托管 venv，用于修复坏环境）。
+
+配置项（profile patch 覆盖，见 `cordis.patch.yml`）：
+
+| 键 | 默认 | 说明 |
+| --- | --- | --- |
+| `pythonBin` | 空 | 显式指定解释器，跳过全部探测与自动安装 |
+| `pythonRuntime` | `auto` | `auto` = 能用就用、没有就自举；`system` = 只探测不安装；`managed` = 只用托管 venv |
+| `pipIndexUrl` | 空 | 托管 venv 的包源（内网镜像用） |
+| `gatewayVersion` | 空 | 安装 `octop-gateway` 的版本后缀，如 `==1.0.0`（空 = 最新） |
+| `dataDir` | `~/.dsh/dsh-gateway` | 数据目录（托管运行时也在其下） |
+| `defaultWorkspacePath` | 空 | 未绑定通道的工作区；空 = 未绑定 → 会话进「未分组」 |
+| `replyTimeoutSec` | 240 | 等一轮 turn 的上限（秒） |
 
 通道凭据不写进任何配置文件：设置页提交后存入 DSH credentials store，domain 只保存 ref。
 
