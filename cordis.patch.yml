@@ -1,17 +1,45 @@
-# dsh-gateway: registers the Host plugin row with its default config.
-# Users override any of these fields in their own profile patch layer.
+# dsh-gateway — the Host plugin row and its defaults layer.
+#
+# The values below ARE the defaults: a profile that overrides nothing gets these.
+# A patch assigns keys on the target row (`target[key] = value`), so overriding
+# `config` replaces the WHOLE config object — it is not deep-merged. To change one
+# field, restate the fields you want; copying this block is the supported way.
+#
+# The key set here, the `Config` schema in index.js and the table in README.md are
+# three views of one surface: `config-surface.test.mjs` fails when they drift.
+# Layer ownership (which setting belongs to the host, the channel or the
+# credential store) is documented in docs/architecture.md.
 - insert:
     - id: dsh-gateway
       name: '@slothtron/dsh-gateway'
       config:
-        # Python interpreter that has octop-gateway installed. Empty = auto:
-        # <packageDir>/.venv/bin/python when present, else "python3".
-        pythonBin: ''
-        # Data dir for the sidecar (media backend storage, scratch). Empty =
-        # ~/.dsh/dsh-gateway.
-        dataDir: ''
-        # Workspace directory for channels in "default" workspace mode. Empty =
-        # the Harness default workspace (falls back to an ungrouped session).
-        defaultWorkspacePath: ''
-        # Seconds to wait for an agent turn to settle before replying an error.
-        replyTimeoutSec: 240
+        # ── How the Python sidecar is resolved and provisioned ────────────────
+        runtime:
+          # Explicit interpreter. Non-empty = use only this one, skip every probe
+          # and every install. Empty = resolve through pythonRuntime below.
+          pythonBin: ''
+          # auto    = probe <package>/.venv, then python3/python, then install a
+          #           managed venv under <dataDir>/runtime/venv
+          # system  = probe the system interpreters only, never install
+          # managed = use <dataDir>/runtime/venv only, create and install it if absent
+          pythonRuntime: auto
+          # Package index for the managed-venv install (empty = pip default; point
+          # it at an internal mirror). Used only while installing.
+          pipIndexUrl: ''
+          # Requirement suffix for octop-gateway in the managed venv, e.g. "==1.0.0"
+          # (empty = latest). Used only while installing.
+          gatewayVersion: ''
+          # Data dir for the sidecar: managed runtime, media storage, scratch, and
+          # the neutral session directory <dataDir>/workspace. Empty =
+          # <DSH_HOME>/dsh-gateway (default ~/.dsh/dsh-gateway).
+          dataDir: ''
+        # ── Where a channel's conversations live, how long a turn waits ───────
+        sessions:
+          # Workspace for a channel whose access scope is unrestricted and that has
+          # no /workspace override. Empty = unbound: sessions run in
+          # <dataDir>/workspace and are NOT registered as a workspace, so they land
+          # in the sidebar's "Ungrouped" bucket.
+          defaultWorkspacePath: ''
+          # Seconds to wait for one agent turn to settle before replying an error
+          # to the IM channel. Floor is 30.
+          replyTimeoutSec: 240

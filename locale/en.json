@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "IM Gateway Bridge (octop-gateway)",
-    "description": "Bridges octop-gateway IM channels into DSH sessions: Python sidecar, settings-page channel management, subject routing with context-watermark rotation."
+    "description": "Bridges octop-gateway IM channels into DSH sessions: Python sidecar, settings-page channel management, subject routing with in-place context compaction."
   }
 }

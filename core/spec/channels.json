@@ -1,0 +1,277 @@
+{
+  "version": 1,
+  "comment": "Channel catalogue for dsh-gateway. Language-neutral: the Python sidecar serves it (as the settings page's field schema) and the browser half renders it. Field `name` values are the config keys octop-gateway accepts, which include its `field_aliases`. Each kind also carries `blurb`, the one-line description the settings page shows on its platform tile; it states how that platform is configured, nothing about the host. A channel's display name is not in here: the host derives it as `<label>-<6-character id>` when the channel is created. `identity` names the control whose value is the account's id on the platform (the App ID, the bot UIN): the host refuses to configure one account twice, because two live channels polling one bot fight over the same session.",
+  "kinds": {
+    "weixin": {
+      "label": "微信",
+      "blurb": "扫码登录，确认后自动创建通道。",
+      "color": "#07C160",
+      "comment": "WeixinConfig declares only `accounts`; its from_dict also accepts this flat single-account form, so these keys are declared here rather than in the dataclass.",
+      "identity": "bot_uin",
+      "acceptsExtraKeys": [
+        "bot_uin",
+        "token",
+        "base_url"
+      ],
+      "quickConfig": {
+        "mode": "qr",
+        "comment": "only: no manual entry when creating (the flat single-account form is still editable afterwards). autoCreate: the scan itself creates the channel, so no field is hand-typed.",
+        "only": true,
+        "autoCreate": true,
+        "title": "扫码登录",
+        "hint": "用微信扫码并在手机上确认登录，插件会立刻创建通道；无需手填任何字段。",
+        "steps": [
+          "打开微信",
+          "扫描二维码",
+          "在手机上确认登录"
+        ],
+        "pollNote": "二维码过期后会自动换新码，页面上的码会跟着更新"
+      },
+      "connection": [
+        {
+          "name": "bot_uin",
+          "label": "机器人 UIN",
+          "type": "text",
+          "required": true,
+          "placeholder": "iLink 机器人账号 UIN"
+        },
+        {
+          "name": "token",
+          "label": "Token",
+          "type": "password",
+          "required": true,
+          "secret": true,
+          "placeholder": "iLink Bot Token"
+        },
+        {
+          "name": "base_url",
+          "label": "Base URL",
+          "type": "text",
+          "placeholder": "https://ilinkai.weixin.qq.com"
+        }
+      ]
+    },
+    "qq": {
+      "label": "QQ",
+      "blurb": "支持扫码创建，也可手填凭据。",
+      "color": "#12B7F5",
+      "credentialUrl": "https://q.qq.com/qqbot/openclaw/",
+      "comment": "quickConfig.mode=qr: the gateway library owns a two-phase QR binding flow for this kind, so the settings page offers scan-to-create beside manual entry. Credential keys are the library's own and are mapped by the sidecar.",
+      "identity": "app_id",
+      "quickConfig": {
+        "mode": "qr",
+        "title": "扫码创建",
+        "hint": "用手机 QQ 扫码并在手机上确认，插件会取回 App ID 与 App Secret；确认前不会写入任何凭据。",
+        "steps": [
+          "打开手机 QQ",
+          "扫描二维码",
+          "在手机上确认授权"
+        ],
+        "pollNote": "二维码约 8 分钟内有效，过期可重新生成"
+      },
+      "connection": [
+        {
+          "name": "app_id",
+          "label": "App ID",
+          "type": "text",
+          "required": true,
+          "placeholder": "102xxxxxx"
+        },
+        {
+          "name": "secret",
+          "label": "App Secret",
+          "type": "password",
+          "required": true,
+          "secret": true
+        }
+      ],
+      "fixed": {
+        "c2c_streaming": true
+      }
+    },
+    "feishu": {
+      "label": "飞书",
+      "blurb": "在开放平台创建应用，再填凭据。",
+      "color": "#3370FF",
+      "credentialUrl": "https://open.feishu.cn/app",
+      "identity": "app_id",
+      "connection": [
+        {
+          "name": "app_id",
+          "label": "App ID",
+          "type": "text",
+          "required": true,
+          "placeholder": "cli_xxx"
+        },
+        {
+          "name": "app_secret",
+          "label": "App Secret",
+          "type": "password",
+          "required": true,
+          "secret": true
+        },
+        {
+          "name": "encrypt_key",
+          "label": "Encrypt Key",
+          "type": "password",
+          "secret": true,
+          "hint": "仅在事件订阅走 HTTP 回调时需要"
+        },
+        {
+          "name": "verification_token",
+          "label": "Verification Token",
+          "type": "password",
+          "secret": true,
+          "hint": "仅在事件订阅走 HTTP 回调时需要"
+        }
+      ]
+    },
+    "dingtalk": {
+      "label": "钉钉",
+      "blurb": "在开放平台创建应用，再填凭据。",
+      "color": "#0089FF",
+      "credentialUrl": "https://open-dev.dingtalk.com/",
+      "identity": "client_id",
+      "connection": [
+        {
+          "name": "client_id",
+          "label": "Client ID",
+          "type": "text",
+          "required": true,
+          "placeholder": "dingxxxxxx",
+          "hint": "就是 AppKey；写入后由 octop-gateway 的字段别名映射为 app_key"
+        },
+        {
+          "name": "client_secret",
+          "label": "Client Secret",
+          "type": "password",
+          "required": true,
+          "secret": true,
+          "hint": "就是 AppSecret；写入后映射为 app_secret"
+        }
+      ]
+    }
+  },
+  "groups": [
+    {
+      "id": "display",
+      "title": "消息展示",
+      "description": "agent 回复里哪些过程信息会转发到 IM。",
+      "comment": "Shared by every kind, so the copy here must not name a platform: a group without `kinds` renders under all of them, and a platform named in a control would show up where it does not apply. A caveat that belongs to one platform goes in `kindNotices`, keyed by that kind. `order` places the card on the settings page; the host-side session card sits at 20 (see core/spec/README.md).",
+      "order": 40,
+      "controls": [
+        {
+          "name": "show_thinking",
+          "label": "显示思考过程",
+          "type": "switch",
+          "hint": "关闭只隐藏展示，不影响模型本身思考"
+        },
+        {
+          "name": "show_tool_hints",
+          "label": "显示工具调用提示",
+          "type": "switch",
+          "hint": "每次工具调用都会额外发一条消息，不需要过程提示时可以关闭"
+        }
+      ],
+      "kindNotices": {
+        "qq": "QQ 私聊对可回复的条数有限制，建议保持关闭。"
+      }
+    },
+    {
+      "id": "groupPolicy",
+      "path": "group_context",
+      "title": "群聊策略",
+      "description": "控制机器人能看到哪些群消息，以及什么时候启动 Agent 回复。",
+      "order": 30,
+      "comment": "Only kinds that actually deliver group messages are listed. weixin has no group surface (iLink is direct-only); dingtalk reports group conversations but never marks a bot mention, so mention-based activation can never fire there.",
+      "kinds": [
+        "qq",
+        "feishu",
+        "dingtalk"
+      ],
+      "kindNotices": {
+        "dingtalk": "钉钉的群消息不带 @ 标记，选「仅被 @ 时回复」不会有消息进来。要用群聊请把可见范围设为「全部消息」、触发方式设为「每条消息都回复」。"
+      },
+      "controls": [
+        {
+          "name": "enabled",
+          "label": "启用群聊策略",
+          "type": "switch"
+        },
+        {
+          "name": "visibility",
+          "label": "群消息可见范围",
+          "type": "segmented",
+          "visibleWhen": {
+            "enabled": true
+          },
+          "options": [
+            {
+              "value": "auto",
+              "label": "自动适配"
+            },
+            {
+              "value": "mention_only",
+              "label": "仅 @ 消息"
+            },
+            {
+              "value": "mention_recent",
+              "label": "@ + 最近消息"
+            },
+            {
+              "value": "all",
+              "label": "全部消息"
+            }
+          ]
+        },
+        {
+          "name": "activation",
+          "label": "回复触发方式",
+          "type": "segmented",
+          "visibleWhen": {
+            "enabled": true
+          },
+          "disabledUnless": {
+            "visibility": "all"
+          },
+          "options": [
+            {
+              "value": "mention",
+              "label": "仅被 @ 时回复"
+            },
+            {
+              "value": "always",
+              "label": "每条消息都回复"
+            }
+          ],
+          "warnWhen": {
+            "value": "always",
+            "text": "机器人会回复群内每一条可见消息，可能产生较多消息和模型调用。"
+          }
+        },
+        {
+          "name": "history_limit",
+          "label": "上下文消息条数",
+          "type": "number",
+          "min": 0,
+          "max": 50,
+          "visibleWhen": {
+            "enabled": true
+          },
+          "disabledWhen": {
+            "visibility": "mention_only"
+          }
+        },
+        {
+          "name": "clear_after_reply",
+          "label": "回复后清空临时上下文",
+          "type": "switch",
+          "hint": "避免已经处理过的群消息再次进入下一轮对话",
+          "visibleWhen": {
+            "enabled": true
+          }
+        }
+      ]
+    }
+  ]
+}
